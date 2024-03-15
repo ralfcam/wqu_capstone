@@ -27,9 +27,7 @@ def get_sec_form(url_: str, chrome_options: Options() = None):
 
     # Wait for the user to log in with a maximum timeout of 60 seconds
     # Assume there is a unique element that appears after successful login
-    WebDriverWait(driver, 10).until(
-        EC.presence_of_element_located((By.ID, "fact-identifier-5"))
-    )
+    WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, "fact-identifier-5")))
 
     htm_report_path = HTM_PATH + url_.split("data/")[1].replace("/", "-")
     # Save the page source to an HTML file
@@ -74,6 +72,6 @@ def text_form_report(htm_report_path):
 
 
 if __name__ == "__main__":
-    # url_ = "https://www.sec.gov/ixviewer/ix.html?doc=/Archives/edgar/data/101778/000010177823000146/mro-20230930.htm"
-    # get_sec_form(url_)
-    text_form_report("data/htm/101778-000010177823000146-mro-20230930.htm")
+    url_ = "https://www.sec.gov/ixviewer/ix.html?doc=/Archives/edgar/data/93410/000009341021000009/cvx-20201231.htm"
+    fp = get_sec_form(url_)
+    text_form_report(fp)
