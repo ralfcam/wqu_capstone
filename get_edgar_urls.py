@@ -6,7 +6,7 @@ headers = {'User-Agent': "email@address.com"}
 ciks_url = "https://www.sec.gov/files/company_tickers.json"
 
 company_tickers = dict(
-    oil_gas_tickers=['MRO', 'XOM', 'CVX', 'COP', 'TTE', 'EOG', 'VLO', 'PSX', 'MPC', 'OXY', 'SLB'],
+    # oil_gas_tickers=['MRO', 'XOM', 'CVX', 'COP', 'TTE', 'EOG', 'VLO', 'PSX', 'MPC', 'OXY', 'SLB'],
     communication_services_tickers=[
         'GOOGL',  # Alphabet Inc.
         'META',  # Meta Platforms, Inc. (formerly Facebook)
@@ -141,7 +141,7 @@ company_tickers = dict(
     ]
 )
 
-company_tickers_key = "oil_gas_tickers"
+# company_tickers_key = "oil_gas_tickers"
 fill_period = 'recent'
 # Fetch CIK mapping and lookup CIK for the given ticker
 symbol_to_cik = requests.get(ciks_url, headers=headers).json()
@@ -149,31 +149,33 @@ cik_lookup = {val['ticker']: val['cik_str'] for key, val in symbol_to_cik.items(
 
 if __name__ == "__main__":
     recent_selected_releases_dfs = []
-    for company_ticker in company_tickers[company_tickers_key]:
-        try:
-            cik = cik_lookup[company_ticker]
+    for industry_group in company_tickers.keys():
+        for company_ticker in company_tickers[industry_group]:
+            try:
+                cik = cik_lookup[company_ticker]
 
-            # Fetch filings for the company using its CIK
-            edgar_filings_url = f"https://data.sec.gov/submissions/CIK{cik:0>10}.json"
-            edgar_filings = requests.get(edgar_filings_url, headers=headers).json()
+                # Fetch filings for the company using its CIK
+                edgar_filings_url = f"https://data.sec.gov/submissions/CIK{cik:0>10}.json"
+                edgar_filings = requests.get(edgar_filings_url, headers=headers).json()
 
-            # Convert recent filings to DataFrame and filter for 10-Q and 10-K filings
-            recent = pd.DataFrame(edgar_filings['filings'][fill_period])
-            recent_selected_releases = recent.loc[recent['primaryDocDescription'].isin(['10-Q', '10-K'])].copy()
-            recent_selected_releases['ticker'] = company_ticker
+                # Convert recent filings to DataFrame and filter for 10-Q and 10-K filings
+                recent = pd.DataFrame(edgar_filings['filings'][fill_period])
+                recent_selected_releases = recent.loc[recent['primaryDocDescription'].isin(['10-Q', '10-K'])].copy()
+                recent_selected_releases['ticker'] = company_ticker
 
-            # Construct URLs for the filtered filings
-            base_url = "https://www.sec.gov/ixviewer/ix.html?doc=/Archives/edgar/data"
-            recent_selected_releases['report_url'] = recent_selected_releases.apply(
-                lambda row: f"{base_url}/{cik}/{row['accessionNumber'].replace('-', '')}/{row['primaryDocument']}", axis=1)
+                # Construct URLs for the filtered filings
+                base_url = "https://www.sec.gov/ixviewer/ix.html?doc=/Archives/edgar/data"
+                recent_selected_releases['report_url'] = recent_selected_releases.apply(
+                    lambda row: f"{base_url}/{cik}/{row['accessionNumber'].replace('-', '')}/{row['primaryDocument']}", axis=1)
 
-            # Display the DataFrame with URLs
-            # recent_selected_releases.to_csv(f'data/releases/{company_ticker}_recents_selected_releases.csv')
-            recent_selected_releases_dfs.append(recent_selected_releases)
-        except ValueError:
-            continue
+                # Display the DataFrame with URLs
+                # recent_selected_releases.to_csv(f'data/releases/{company_ticker}_recents_selected_releases.csv')
+                recent_selected_releases_dfs.append(recent_selected_releases)
+                print(recent_selected_releases)
+            except ValueError:
+                continue
 
     # Concatenate all DataFrames and export to CSV
     recent_selected_releases_df = pd.concat(recent_selected_releases_dfs).set_index('accessionNumber')
-    recent_selected_releases_df.to_csv(f'data/releases/{company_tickers_key}_{fill_period}_selected_releases.csv')
+    recent_selected_releases_df.to_csv(f'data/releases/{fill_period}.csv')
 

@@ -72,7 +72,7 @@ if __name__ == "__main__":
     # Create a new instance of the Chrome driver with the specified options
     driver = webdriver.Chrome(options=chrome_options)
 
-    selected_releases_df = pd.read_csv("data/releases/oil_gas_tickers_recent_selected_releases.csv",
+    selected_releases_df = pd.read_csv("data/releases/recent.csv",
                                        index_col="accessionNumber")
 
     for url in selected_releases_df["report_url"]:
