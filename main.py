@@ -3,6 +3,7 @@ import pandas as pd
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
+from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from bs4 import BeautifulSoup
@@ -13,9 +14,17 @@ TXT_PATH = r"data/text/"
 
 def get_sec_form(url_: str, driver_: webdriver, htm_report_path_: str):
     driver_.get(url_)
-    # Wait for the user to log in with a maximum timeout of 60 seconds
-    # Assume there is a unique element that appears after successful login
-    WebDriverWait(driver_, 5).until(EC.presence_of_element_located((By.TAG_NAME, "document")))
+    try:
+        # Wait for the "document" tag to be present with a maximum timeout of 10 seconds
+        WebDriverWait(driver_, 5).until(EC.presence_of_element_located((By.ID, "dynamic-xbrl-form")))
+        # WebDriverWait(driver_, 5).until(EC.presence_of_element_located((By.TAG_NAME, "body")))
+        # WebDriverWait(driver_, 5).until(
+        #     lambda driver__: driver__.execute_script("return document.readyState") == "complete"
+        # )
+    except TimeoutException:
+        print("Timed out waiting for page `document` to load")
+        return None
+
     # Save the page source to an HTML file
     with open(htm_report_path_, "w", encoding="utf-8") as file:
         file.write(driver_.page_source)
@@ -24,27 +33,29 @@ def get_sec_form(url_: str, driver_: webdriver, htm_report_path_: str):
     return htm_report_path_
 
 
-def text_form_report(htm_report_path_, out_path, wanted_tag="document"):
+def text_form_report(htm_report_path_, out_path, wanted_id="dynamic-xbrl-form"):
     # Read the HTML file
     with open(htm_report_path_, "r", encoding="utf-8") as file:
         html_content = file.read()
 
     # Create a BeautifulSoup object
     soup = BeautifulSoup(html_content, "html.parser")
-    soup = soup.find(wanted_tag)
-    # Find the wanted tag or use the whole document if not found
-    # if wanted_tag != "document":
-    #     soup = soup.find(wanted_tag) or soup
+    soup = soup.find(id=wanted_id)  # div with id #dynamic-xbrl-form
 
-    # Remove script, style, and unwanted tags
-    unwanted_tags = ["script", "style", "header", "footer", "nav", "aside", "figure", "figcaption",
-                     "table", "thead", "tbody"]
-    for tag in unwanted_tags:
-        for element in soup.find_all(tag):
-            element.decompose()
+    # unwanted_tags = ["script", "style", "header", "footer", "nav", "aside", "figure", "figcaption",
+    #                  "table", "thead", "tbody"]
+    #
+    # for tag in unwanted_tags:
+    #     for element in soup.find_all(tag):
+    #         element.decompose()
 
-    # Extract the clean text
-    clean_text = soup.get_text(separator=" ", strip=True)
+    # Further filter for text tags (a, p, H1, ..., span) in the HTML file
+    tags_to_find = ['a', 'p', 'span'] + [f'h{i}' for i in range(1, 7)]
+    text_tags = soup.find_all(tags_to_find)
+
+    # Extract the clean text from the filtered tags
+    clean_text = r' '.join(tag.get_text(separator=" ", strip=True) for tag in text_tags).strip()
+    # clean_text = soup.get_text(separator=" ", strip=True)
 
     # Construct the output file path
     base_name = os.path.basename(htm_report_path_)
@@ -77,15 +88,34 @@ if __name__ == "__main__":
 
     for url in selected_releases_df["report_url"]:
         htm_report_path = HTM_PATH + url.split("data/")[1].replace("/", "-")
-        print(f"Stored at {htm_report_path} successfully")
+
         if not os.path.isfile(htm_report_path):
             try:
                 get_sec_form(url, driver, htm_report_path)
-            except:
+                # print(f"Stored at {htm_report_path} successfully")
+            except Exception as e:
+                print(f"Excepted {htm_report_path} with: {e}")
                 continue
+        else:
+            print(f"Skipping {htm_report_path}")
+    driver.quit()
+
+    #######################################################################
 
     for htm_file in os.listdir(HTM_PATH):
-        try:
-            text_form_report(HTM_PATH + htm_file, "data/text/")
-        except:
-            continue
+        txt_report_path = TXT_PATH + htm_file.replace("htm", "txt")
+        if not os.path.isfile(txt_report_path):
+            try:
+                text_form_report(HTM_PATH + htm_file, "data/text/")
+            except AttributeError:
+                try:
+                    os.remove(HTM_PATH + htm_file)
+                    print(f"Deleted {htm_file}")
+                except OSError as e:
+                    print(f"Error deleting {htm_file}: {e}")
+                continue
+            except Exception as e:
+                print(f"Excepted {htm_file} with: {e}")
+                continue
+        else:
+            print(f"Skipping {htm_file}")
