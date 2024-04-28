@@ -27,10 +27,11 @@ def add_file_content_column(df, path_column, new_column, base_dir="data/text/"):
     return df
 
 
-releases = pd.read_csv("data/releases/recent.csv")
+releases = pd.read_csv("data/releases/recent.csv", index_col="accessionNumber")
 releases = add_file_content_column(releases, 'report_url', 'report_content')
 
 rel_reports = releases[['form', 'ticker', 'reportDate', 'acceptanceDateTime', 'report_content']].dropna()  # 'filingDate',
+rel_reports["reportDate"] = pd.to_datetime(rel_reports["reportDate"], format='%Y-%m-%d')
 
 releases_Q_reports = rel_reports[rel_reports["form"] == "10-Q"].dropna()
 del releases_Q_reports["form"]

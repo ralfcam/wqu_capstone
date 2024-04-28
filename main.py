@@ -39,8 +39,9 @@ def text_form_report(htm_report_path_, out_path, wanted_id="dynamic-xbrl-form"):
         html_content = file.read()
 
     # Create a BeautifulSoup object
+
     soup = BeautifulSoup(html_content, "html.parser")
-    soup = soup.find(id=wanted_id)  # div with id #dynamic-xbrl-form
+    # soup = soup.find(id=wanted_id)  # div with id #dynamic-xbrl-form
 
     # unwanted_tags = ["script", "style", "header", "footer", "nav", "aside", "figure", "figcaption",
     #                  "table", "thead", "tbody"]
@@ -50,13 +51,26 @@ def text_form_report(htm_report_path_, out_path, wanted_id="dynamic-xbrl-form"):
     #         element.decompose()
 
     # Further filter for text tags (a, p, H1, ..., span) in the HTML file
-    tags_to_find = ['a', 'p', 'span'] + [f'h{i}' for i in range(1, 7)]
-    text_tags = soup.find_all(tags_to_find)
+    # tags_to_find = ['a', 'p', 'span'] + [f'h{i}' for i in range(1, 7)]
+    # text_tags = soup.find_all(tags_to_find)
 
     # Extract the clean text from the filtered tags
-    clean_text = r' '.join(tag.get_text(separator=" ", strip=True) for tag in text_tags).strip()
+    # clean_text = r' '.join(tag.get_text(separator=" ", strip=True) for tag in text_tags).strip()
     # clean_text = soup.get_text(separator=" ", strip=True)
+    # If opening a local HTML file:
+    # with open('path_to_file.html', 'r') as file:
+    #     html_content = file.read()
 
+
+    # Extract text from the HTML
+    # Find all table elements and decompose them
+    tables = soup.find_all('table')
+    for table in tables:
+        table.decompose()
+
+    clean_text = soup.get_text(separator=' ', strip=True)
+    clean_text = clean_text.replace("\n", "").replace("\t", "")
+    clean_text = clean_text.split("UNITED")[1]
     # Construct the output file path
     base_name = os.path.basename(htm_report_path_)
     file_name_without_ext = os.path.splitext(base_name)[0]
@@ -71,34 +85,34 @@ def text_form_report(htm_report_path_, out_path, wanted_id="dynamic-xbrl-form"):
 
 
 if __name__ == "__main__":
-    # Create Chrome options
-    chrome_options = Options()
-    # Add the option to use an existing Chrome session
-    chrome_options.add_argument("--remote-debugging-port=9222")
-    # Set the desired headers
-    headers = {'User-Agent': "email@address.com"}
-    # Add headers to the Chrome options
-    for header_name, header_value in headers.items():
-        chrome_options.add_argument(f"--header={header_name}={header_value}")
-    # Create a new instance of the Chrome driver with the specified options
-    driver = webdriver.Chrome(options=chrome_options)
-
-    selected_releases_df = pd.read_csv("data/releases/recent.csv",
-                                       index_col="accessionNumber")
-
-    for url in selected_releases_df["report_url"]:
-        htm_report_path = HTM_PATH + url.split("data/")[1].replace("/", "-")
-
-        if not os.path.isfile(htm_report_path):
-            try:
-                get_sec_form(url, driver, htm_report_path)
-                # print(f"Stored at {htm_report_path} successfully")
-            except Exception as e:
-                print(f"Excepted {htm_report_path} with: {e}")
-                continue
-        else:
-            print(f"Skipping {htm_report_path}")
-    driver.quit()
+    # # Create Chrome options
+    # chrome_options = Options()
+    # # Add the option to use an existing Chrome session
+    # chrome_options.add_argument("--remote-debugging-port=9222")
+    # # Set the desired headers
+    # headers = {'User-Agent': "email@address.com"}
+    # # Add headers to the Chrome options
+    # for header_name, header_value in headers.items():
+    #     chrome_options.add_argument(f"--header={header_name}={header_value}")
+    # # Create a new instance of the Chrome driver with the specified options
+    # driver = webdriver.Chrome(options=chrome_options)
+    #
+    # selected_releases_df = pd.read_csv("data/releases/recent.csv",
+    #                                    index_col="accessionNumber")
+    #
+    # for url in selected_releases_df["report_url"]:
+    #     htm_report_path = HTM_PATH + url.split("data/")[1].replace("/", "-")
+    #
+    #     if not os.path.isfile(htm_report_path):
+    #         try:
+    #             get_sec_form(url, driver, htm_report_path)
+    #             # print(f"Stored at {htm_report_path} successfully")
+    #         except Exception as e:
+    #             print(f"Excepted {htm_report_path} with: {e}")
+    #             continue
+    #     else:
+    #         print(f"Skipping {htm_report_path}")
+    # driver.quit()
 
     #######################################################################
 
