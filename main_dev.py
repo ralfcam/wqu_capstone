@@ -164,10 +164,12 @@ def get_return(ticker, report_date, df_returns):
     try:
         # Return the returns data for the next trading day
         return df_returns.at[report_date, ticker]
-    except (KeyError, RecursionError):
+    except KeyError:
         # Return None if no data is available for the next trading day
         next_trading_day = report_date + pd.Timedelta(days=1)
         return get_return(ticker, next_trading_day, df_returns)
+    except RecursionError:
+        return pd.NA
 
 
 def get_filing_segments(doc: str, filing_type: str):
@@ -334,8 +336,7 @@ class FilingManager:
             df[col].replace(replacements, regex=True, inplace=True)
 
         # Add the following day's return
-        df[f'{TARGET_DAYS}_days_return'] = df.apply(
-            lambda row: get_return(row['companyName'], row['FILED AS OF DATE'], secs_q_ret), axis=1)
+        df[f'{TARGET_DAYS}_days_return'] = df.apply(lambda row: get_return(row['companyName'], row['FILED AS OF DATE'], secs_q_ret), axis=1)
 
         df.to_csv(os.path.join(self.out_dir, f'compiled_{self.form_type.lower()}_data.csv'), index=False)
 
